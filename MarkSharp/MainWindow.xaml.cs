@@ -10,14 +10,15 @@ using System.Windows.Input;
 
 namespace MarkSharp {
     public partial class MainWindow : Window {
-        private bool _isDarkTheme = false;
         private readonly MarkdownPipeline _markdownPipeline;
 
+        private bool _isDarkTheme = false;
+        private bool _isDirty = false;
+        private bool _isScrollSyncEnabled = true;
         private bool _isTextBoxScrolling = false;
         private bool _isPreviewScrolling = false;
 
         private string _currentFilePath = null;
-        private bool _isDirty = false;
 
         public MainWindow() {
             InitializeComponent();
@@ -48,6 +49,10 @@ namespace MarkSharp {
             ");
 
             UpdatePreview();
+        }
+
+        private void SyncScrollCheckBox_Click(object sender, RoutedEventArgs e) {
+            _isScrollSyncEnabled = SyncScrollCheckBox.IsChecked ?? true;
         }
 
         private void MarkdownTextBox_TextChanged(object sender, TextChangedEventArgs e) {
@@ -135,6 +140,8 @@ namespace MarkSharp {
         }
 
         private async void MarkdownTextBox_ScrollChanged(object sender, ScrollChangedEventArgs e) {
+            if (!_isScrollSyncEnabled) return;
+
             if (_isPreviewScrolling) return;
 
             _isTextBoxScrolling = true;
@@ -152,6 +159,8 @@ namespace MarkSharp {
         }
 
         private void HandlePreviewScrollMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e) {
+            if (!_isScrollSyncEnabled) return;
+
             if (_isTextBoxScrolling) return;
 
             _isPreviewScrolling = true;

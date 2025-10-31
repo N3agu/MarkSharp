@@ -61,7 +61,20 @@
             </StatusBarItem>
 
             <StatusBarItem Grid.Column="1">
-                <TextBlock x:Name="WordCountLabel" Text="0 words" Margin="0,0,10,0" />
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="SyncScrollCheckBox"
+                              Content="Sync Scroll"
+                              IsChecked="True"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0"
+                              ToolTip="Toggle real-time scroll syncing"
+                              Click="SyncScrollCheckBox_Click" />
+
+                    <TextBlock x:Name="WordCountLabel" 
+                               Text="0 words" 
+                               Margin="0,0,10,0" 
+                               VerticalAlignment="Center" />
+                </StackPanel>
             </StatusBarItem>
 
         </StatusBar>
