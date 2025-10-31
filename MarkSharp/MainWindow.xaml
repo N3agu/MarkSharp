@@ -4,16 +4,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MarkSharp"
+        mc:Ignorable="d"
+        Title="Mark#" Height="720" Width="1280"
+        
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        ui:WindowHelper.UseModernWindowStyle="True"
+        
         ui:ThemeManager.RequestedTheme="Light"
-        mc:Ignorable="d"
-        WindowStartupLocation="CenterScreen"
-        Title="Mark#" Height="700" Width="900">
+        ui:WindowHelper.UseModernWindowStyle="True">
+
     <DockPanel>
         <ui:CommandBar DockPanel.Dock="Top" DefaultLabelPosition="Right">
             <ui:AppBarButton x:Name="ThemeToggleButton"
+                             Icon="Pin"
                              Label="Toggle Theme"
                              Click="ThemeToggleButton_Click" />
         </ui:CommandBar>
@@ -54,9 +57,10 @@
                      FontFamily="Consolas"
                      FontSize="14"
                      Text="" 
-                     TextChanged="MarkdownTextBox_TextChanged"/>
+                     TextChanged="MarkdownTextBox_TextChanged"
+                ScrollViewer.ScrollChanged="MarkdownTextBox_ScrollChanged"/>
 
-            <GridSplitter Grid.Column="1"
+                <GridSplitter Grid.Column="1"
                           Grid.Row="0" Grid.RowSpan="2"
                           Width="5"
                           HorizontalAlignment="Center"
@@ -65,7 +69,9 @@
                           ShowsPreview="True" />
 
                 <wv2:WebView2 x:Name="PreviewBrowser"
-                          Grid.Column="2" Grid.Row="1" />
+                          Grid.Column="2" Grid.Row="1"
+                    WebMessageReceived="HandlePreviewScrollMessage" />
         </Grid>
     </DockPanel>
 </Window>
+
