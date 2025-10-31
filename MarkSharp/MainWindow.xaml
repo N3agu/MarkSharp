@@ -5,11 +5,67 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MarkSharp"
         xmlns:ui="http://schemas.modernwpf.com/2019"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         ui:WindowHelper.UseModernWindowStyle="True"
+        ui:ThemeManager.RequestedTheme="Light"
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="Mark#" Height="700" Width="900">
+    <DockPanel>
+        <ui:CommandBar DockPanel.Dock="Top" DefaultLabelPosition="Right">
+            <ui:AppBarButton x:Name="ThemeToggleButton"
+                             Label="Toggle Theme"
+                             Click="ThemeToggleButton_Click" />
+        </ui:CommandBar>
 
-    </Grid>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="300" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MinWidth="300" />
+            </Grid.ColumnDefinitions>
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="MARKDOWN"
+                       Grid.Row="0" Grid.Column="0"
+                       Padding="15,10,10,10"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Opacity="0.7" />
+
+            <TextBlock Text="PREVIEW"
+                       Grid.Row="0" Grid.Column="2"
+                       Padding="10,10,10,10"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Opacity="0.7" />
+
+            <TextBox x:Name="MarkdownTextBox"
+                     Grid.Column="0" Grid.Row="1"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"
+                     BorderThickness="0"
+                     Padding="15,0,15,15"
+                     FontFamily="Consolas"
+                     FontSize="14"
+                     Text="" 
+                     TextChanged="MarkdownTextBox_TextChanged"/>
+
+            <GridSplitter Grid.Column="1"
+                          Grid.Row="0" Grid.RowSpan="2"
+                          Width="5"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch"
+                          Background="LightGray"
+                          ShowsPreview="True" />
+
+                <wv2:WebView2 x:Name="PreviewBrowser"
+                          Grid.Column="2" Grid.Row="1" />
+        </Grid>
+    </DockPanel>
 </Window>
