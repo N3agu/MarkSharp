@@ -6,20 +6,65 @@
         xmlns:local="clr-namespace:MarkSharp"
         mc:Ignorable="d"
         Title="Mark#" Height="720" Width="1280"
-        
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        
-        ui:ThemeManager.RequestedTheme="Light"
-        ui:WindowHelper.UseModernWindowStyle="True">
-
+        ui:WindowHelper.UseModernWindowStyle="True"
+        KeyDown="MainWindow_KeyDown">
     <DockPanel>
-        <ui:CommandBar DockPanel.Dock="Top" DefaultLabelPosition="Right">
-            <ui:AppBarButton x:Name="ThemeToggleButton"
-                             Icon="Pin"
-                             Label="Toggle Theme"
-                             Click="ThemeToggleButton_Click" />
+        <ui:CommandBar DockPanel.Dock="Top">
+            <ui:CommandBar.Content>
+                <StackPanel Orientation="Horizontal">
+                    <ui:AppBarButton x:Name="OpenFileButton"
+                                     Icon="OpenFile"
+                                     Label="Open"
+                                     ToolTip="Open (Ctrl+O)"
+                                     Click="OpenFileButton_Click" />
+
+                    <ui:AppBarButton x:Name="SaveButton"
+                                     Icon="Save"
+                                     Label="Save"
+                                     ToolTip="Save (Ctrl+S)"
+                                     Click="SaveButton_Click" />
+
+                    <ui:AppBarButton x:Name="SaveAsButton"
+                                     Label="Save As"
+                                     Icon="Edit"
+                                     ToolTip="Save As (Ctrl+Shift+S)"
+                                     Click="SaveAsButton_Click" >
+                    </ui:AppBarButton>
+                </StackPanel>
+            </ui:CommandBar.Content>
         </ui:CommandBar>
+
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+
+            <StatusBarItem Grid.Column="0">
+                <ui:AppBarButton x:Name="ThemeToggleButton"
+                                 Label="Toggle Theme"
+                                 Height="35" Width="40"
+                                 ToolTip="Toggle Theme"
+                                 Click="ThemeToggleButton_Click" >
+                    <ui:AppBarButton.Icon>
+                        <ui:FontIcon x:Name="ThemeToggleIcon" Glyph="&#xE708;" FontSize="18"/>
+                    </ui:AppBarButton.Icon>
+                </ui:AppBarButton>
+            </StatusBarItem>
+
+            <StatusBarItem Grid.Column="1">
+                <TextBlock x:Name="WordCountLabel" Text="0 words" Margin="0,0,10,0" />
+            </StatusBarItem>
+
+        </StatusBar>
 
         <Grid>
             <Grid.ColumnDefinitions>
@@ -58,9 +103,9 @@
                      FontSize="14"
                      Text="" 
                      TextChanged="MarkdownTextBox_TextChanged"
-                ScrollViewer.ScrollChanged="MarkdownTextBox_ScrollChanged"/>
+                     ScrollViewer.ScrollChanged="MarkdownTextBox_ScrollChanged"/>
 
-                <GridSplitter Grid.Column="1"
+            <GridSplitter Grid.Column="1"
                           Grid.Row="0" Grid.RowSpan="2"
                           Width="5"
                           HorizontalAlignment="Center"
@@ -68,9 +113,9 @@
                           Background="LightGray"
                           ShowsPreview="True" />
 
-                <wv2:WebView2 x:Name="PreviewBrowser"
+            <wv2:WebView2 x:Name="PreviewBrowser"
                           Grid.Column="2" Grid.Row="1"
-                    WebMessageReceived="HandlePreviewScrollMessage" />
+                          WebMessageReceived="HandlePreviewScrollMessage" />
         </Grid>
     </DockPanel>
 </Window>

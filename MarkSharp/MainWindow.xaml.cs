@@ -4,30 +4,32 @@ using Markdig;
 using ModernWpf;
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Win32;
+using System.IO;
+using System.Windows.Input;
 
-namespace MarkSharp
-{
-    public partial class MainWindow : Window
-    {
+namespace MarkSharp {
+    public partial class MainWindow : Window {
         private bool _isDarkTheme = false;
         private readonly MarkdownPipeline _markdownPipeline;
 
         private bool _isTextBoxScrolling = false;
         private bool _isPreviewScrolling = false;
 
-        public MainWindow()
-        {
+        private string _currentFilePath = null;
+        private bool _isDirty = false;
+
+        public MainWindow() {
             InitializeComponent();
 
-            _markdownPipeline = new MarkdownPipelineBuilder()
-                                    .UseAdvancedExtensions()
-                                    .Build();
-
+            _markdownPipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+            ThemeManager.Current.ApplicationTheme = ApplicationTheme.Light;
             InitializeWebViewAsync();
+            UpdateWindowTitle();
+            UpdateWordCount();
         }
 
-        private async void InitializeWebViewAsync()
-        {
+        private async void InitializeWebViewAsync() {
             await PreviewBrowser.EnsureCoreWebView2Async(null);
 
             PreviewBrowser.CoreWebView2.WebMessageReceived += HandlePreviewScrollMessage;
@@ -35,9 +37,9 @@ namespace MarkSharp
             await PreviewBrowser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
                 window.addEventListener('scroll', () => {
                     let scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
-                    if (scrollableHeight <= 0) {
-                        scrollPercent = 0;
-                    } else {
+                    let scrollPercent = 0; // Default to 0
+                    
+                    if (scrollableHeight > 0) {
                         scrollPercent = window.scrollY / scrollableHeight;
                     }
                     
@@ -48,30 +50,99 @@ namespace MarkSharp
             UpdatePreview();
         }
 
-        private void MarkdownTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
+        private void MarkdownTextBox_TextChanged(object sender, TextChangedEventArgs e) {
+            _isDirty = true;
+            UpdateWindowTitle();
             UpdatePreview();
+            UpdateWordCount();
         }
 
-        private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
-        {
+        private void ThemeToggleButton_Click(object sender, RoutedEventArgs e) {
             _isDarkTheme = !_isDarkTheme;
-            ThemeManager.SetRequestedTheme(this, _isDarkTheme ? ElementTheme.Dark : ElementTheme.Light);
+            var newTheme = _isDarkTheme ? ApplicationTheme.Dark : ApplicationTheme.Light;
+            ThemeManager.Current.ApplicationTheme = newTheme;
+
+            ThemeToggleIcon.Glyph = _isDarkTheme ? "\uEC8A" : "\uE708";
+
             UpdatePreview();
         }
 
-        private async void MarkdownTextBox_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        private void MainWindow_KeyDown(object sender, KeyEventArgs e) {
+            bool isCtrlPressed = (e.KeyboardDevice.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+            bool isShiftPressed = (e.KeyboardDevice.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+
+            if (isCtrlPressed) {
+                switch (e.Key) {
+                    case Key.O: // Ctrl + O
+                        OpenFileButton_Click(sender, e);
+                        e.Handled = true;
+                        break;
+
+                    case Key.S:
+                        if (isShiftPressed) {
+                            // Ctrl + Shift + S
+                            SaveAsButton_Click(sender, e);
+                        } else {
+                            // Ctrl + S
+                            SaveButton_Click(sender, e);
+                        }
+                        e.Handled = true;
+                        break;
+                }
+            }
+        }
+
+        private void OpenFileButton_Click(object sender, RoutedEventArgs e) {
+            OpenFileDialog openDialog = new OpenFileDialog
+            {
+                Filter = "Markdown Files (*.md;*.mdown;*.markdown)|*.md;*.mdown;*.markdown|All Files (*.*)|*.*",
+                Title = "Open Markdown File"
+            };
+
+            if (openDialog.ShowDialog() == true) {
+                try {
+                    _currentFilePath = openDialog.FileName;
+                    string content = File.ReadAllText(_currentFilePath);
+                    MarkdownTextBox.Text = content;
+
+                    _isDirty = false;
+                    UpdateWindowTitle();
+                    UpdatePreview();
+                    UpdateWordCount();
+                } catch (Exception ex) {
+                    MessageBox.Show($"Error opening file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e) {
+            if (string.IsNullOrEmpty(_currentFilePath)) {
+                SaveFileAs();
+            } else {
+                try {
+                    File.WriteAllText(_currentFilePath, MarkdownTextBox.Text);
+                    _isDirty = false;
+                    UpdateWindowTitle();
+                } catch (Exception ex) {
+                    MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void SaveAsButton_Click(object sender, RoutedEventArgs e)
         {
+            SaveFileAs();
+        }
+
+        private async void MarkdownTextBox_ScrollChanged(object sender, ScrollChangedEventArgs e) {
             if (_isPreviewScrolling) return;
 
             _isTextBoxScrolling = true;
 
-            if (e.VerticalChange != 0 && MarkdownTextBox.ExtentHeight > MarkdownTextBox.ViewportHeight)
-            {
+            if (e.VerticalChange != 0 && MarkdownTextBox.ExtentHeight > MarkdownTextBox.ViewportHeight) {
                 double scrollPercent = e.VerticalOffset / (MarkdownTextBox.ExtentHeight - MarkdownTextBox.ViewportHeight);
 
-                if (PreviewBrowser != null && PreviewBrowser.CoreWebView2 != null)
-                {
+                if (PreviewBrowser != null && PreviewBrowser.CoreWebView2 != null) {
                     string script = $"window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * {scrollPercent});";
                     await PreviewBrowser.CoreWebView2.ExecuteScriptAsync(script);
                 }
@@ -80,21 +151,17 @@ namespace MarkSharp
             _isTextBoxScrolling = false;
         }
 
-        private void HandlePreviewScrollMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e)
-        {
+        private void HandlePreviewScrollMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e) {
             if (_isTextBoxScrolling) return;
 
             _isPreviewScrolling = true;
 
-            try
-            {
+            try {
                 JsonDocument doc = JsonDocument.Parse(e.WebMessageAsJson);
                 JsonElement root = doc.RootElement;
 
-                if (root.TryGetProperty("type", out JsonElement type) && type.GetString() == "scroll")
-                {
-                    if (root.TryGetProperty("percent", out JsonElement percentElement))
-                    {
+                if (root.TryGetProperty("type", out JsonElement type) && type.GetString() == "scroll") {
+                    if (root.TryGetProperty("percent", out JsonElement percentElement)) {
                         double scrollPercent = percentElement.GetDouble();
 
                         double newOffset = scrollPercent * (MarkdownTextBox.ExtentHeight - MarkdownTextBox.ViewportHeight);
@@ -105,22 +172,16 @@ namespace MarkSharp
                         }
                     }
                 }
-            }
-            catch (JsonException)
+            } catch (JsonException)
             {
 
-            }
-            finally
-            {
+            } finally {
                 _isPreviewScrolling = false;
             }
         }
 
-
-        private void UpdatePreview()
-        {
-            if (PreviewBrowser == null || PreviewBrowser.CoreWebView2 == null)
-            {
+        private void UpdatePreview() {
+            if (PreviewBrowser == null || PreviewBrowser.CoreWebView2 == null) {
                 return;
             }
 
@@ -128,7 +189,7 @@ namespace MarkSharp
             string html = Markdown.ToHtml(markdown, _markdownPipeline);
 
             string themeCss = _isDarkTheme
-                ? "body { background-color: #2b2b2b; color: #f0f0f0; font-family: 'Segoe UI', sans-serif; }"
+                ? "body { background-color: #000000; color: #f0f0f0; font-family: 'Segoe UI', sans-serif; }"
                 : "body { background-color: #ffffff; color: #0f0f0f; font-family: 'Segoe UI', sans-serif; }";
 
             string finalHtml = $@"
@@ -186,6 +247,46 @@ namespace MarkSharp
                 </html>";
 
             PreviewBrowser.NavigateToString(finalHtml);
+        }
+
+        private void SaveFileAs() {
+            SaveFileDialog saveDialog = new SaveFileDialog {
+                Filter = "Markdown File (*.md)|*.md|All Files (*.*)|*.*",
+                Title = "Save Markdown File"
+            };
+
+            if (saveDialog.ShowDialog() == true) {
+                try {
+                    _currentFilePath = saveDialog.FileName;
+                    File.WriteAllText(_currentFilePath, MarkdownTextBox.Text);
+                    _isDirty = false;
+                    UpdateWindowTitle();
+                } catch (Exception ex) {
+                    MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void UpdateWindowTitle() {
+            string fileName = "Untitled";
+            if (!string.IsNullOrEmpty(_currentFilePath)) {
+                fileName = Path.GetFileName(_currentFilePath);
+            }
+
+            string dirtyMark = _isDirty ? "*" : "";
+
+            Title = $"{dirtyMark}{fileName} - Mark#";
+        }
+
+        private void UpdateWordCount() {
+            string text = MarkdownTextBox.Text;
+
+            char[] delimiters = new char[] { ' ', '\r', '\n' };
+            string[] words = text.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
+
+            int wordCount = words.Length;
+
+            WordCountLabel.Text = $"{wordCount} words";
         }
     }
 }
