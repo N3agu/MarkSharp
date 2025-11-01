@@ -16,7 +16,7 @@
         <ui:CommandBar DockPanel.Dock="Top">
             <ui:CommandBar.Content>
                 <StackPanel Orientation="Horizontal">
-
+                    <!-- File operations -->
                     <ui:AppBarButton x:Name="NewFileButton"
                                      Cursor="Hand"
                                      Icon="Add"
@@ -48,22 +48,64 @@
                                      Label="Save As"
                                      ToolTip="Save As (Ctrl+Shift+S)"
                                      Click="SaveAsButton_Click" />
-                </StackPanel>
-            </ui:CommandBar.Content>
 
-            <ui:CommandBar.PrimaryCommands>
-                <ui:AppBarButton x:Name="ExportHtmlButton"
+                    <ui:AppBarSeparator/>
+
+                    <!-- Formatting -->
+                    <ui:AppBarButton x:Name="BoldButton" 
+                                     Icon="Bold" 
+                                     Label="Bold" 
+                                     ToolTip="Bold (Ctrl+B)" 
+                                     Click="BoldButton_Click"/>
+
+                    <ui:AppBarButton x:Name="ItalicButton" 
+                                     Icon="Italic" 
+                                     Label="Italic" 
+                                     ToolTip="Italic (Ctrl+I)" 
+                                     Click="ItalicButton_Click"/>
+
+                    <ui:AppBarButton x:Name="StrikethroughButton" 
+                                     Icon="Remove" 
+                                     Label="Strike" 
+                                     ToolTip="Strikethrough" 
+                                     Click="StrikethroughButton_Click"/>
+
+                    <ui:AppBarSeparator/>
+
+                    <ui:AppBarButton x:Name="LinkButton" 
+                                     Icon="Link" 
+                                     Label="Link" 
+                                     ToolTip="Insert Link (Ctrl+K)" 
+                                     Click="LinkButton_Click"/>
+
+                    <ui:AppBarButton x:Name="CodeButton" 
+                                     Icon="Keyboard" 
+                                     Label="Code" 
+                                     ToolTip="Insert Code" 
+                                     Click="CodeButton_Click"/>
+
+                    <ui:AppBarButton x:Name="QuoteButton" 
+                                     Icon="Message" 
+                                     Label="Quote" 
+                                     ToolTip="Blockquote" 
+                                     Click="QuoteButton_Click"/>
+
+                    <ui:AppBarSeparator/>
+
+                    <!-- Exporting -->
+                    <ui:AppBarButton x:Name="ExportHtmlButton"
                                  Icon="Share"
                                  Label="Export"
                                  ToolTip="Export as HTML (Ctrl+Shift+E)"
                                  Click="ExportHtmlButton_Click"/>
 
-                <ui:AppBarButton x:Name="PrintButton"
+                    <ui:AppBarButton x:Name="PrintButton"
                                  Icon="Print"
                                  Label="Print"
                                  ToolTip="Print to PDF (Ctrl+P)"
                                  Click="PrintButton_Click"/>
-            </ui:CommandBar.PrimaryCommands>
+                </StackPanel>
+            </ui:CommandBar.Content>
 
         </ui:CommandBar>
 

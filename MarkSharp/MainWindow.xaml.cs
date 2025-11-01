@@ -143,6 +143,36 @@ namespace MarkSharp {
             UpdateWindowTitle();
         }
 
+        private void BoldButton_Click(object sender, RoutedEventArgs e)
+        {
+            GetActiveEditor()?.ToggleBold();
+        }
+
+        private void ItalicButton_Click(object sender, RoutedEventArgs e)
+        {
+            GetActiveEditor()?.ToggleItalic();
+        }
+
+        private void StrikethroughButton_Click(object sender, RoutedEventArgs e)
+        {
+            GetActiveEditor()?.ToggleStrikethrough();
+        }
+
+        private void LinkButton_Click(object sender, RoutedEventArgs e)
+        {
+            GetActiveEditor()?.InsertLink();
+        }
+
+        private void CodeButton_Click(object sender, RoutedEventArgs e)
+        {
+            GetActiveEditor()?.ToggleCode();
+        }
+
+        private void QuoteButton_Click(object sender, RoutedEventArgs e)
+        {
+            GetActiveEditor()?.ToggleBlockquote();
+        }
+
         private async void PrintButton_Click(object sender, RoutedEventArgs e)
         {
             var activeEditor = GetActiveEditor();
@@ -151,7 +181,7 @@ namespace MarkSharp {
             SaveFileDialog saveDialog = new SaveFileDialog
             {
                 Filter = "PDF Document (*.pdf)|*.pdf",
-                Title = "Print to PDF", // Changed title
+                Title = "Print to PDF",
                 FileName = Path.ChangeExtension(activeEditor.FileName, ".pdf")
             };
 
@@ -228,6 +258,7 @@ namespace MarkSharp {
 
             if (isCtrlPressed) {
                 switch (e.Key) {
+                    // File operations
                     case Key.N: // Ctrl+N
                         NewFileButton_Click(sender, e);
                         e.Handled = true;
@@ -245,14 +276,32 @@ namespace MarkSharp {
                             SaveButton_Click(sender, e);
                         e.Handled = true;
                         break;
-
                     case Key.W: // Ctrl+W
                         var activeTab = GetActiveTabItem();
-                        if (activeTab != null) {
+                        if (activeTab != null)
+                        {
                             CloseTab(activeTab);
                             e.Handled = true;
                         }
                         break;
+
+                    // Formatting
+                    case Key.B: // Ctrl+B
+                        GetActiveEditor()?.ToggleBold();
+                        e.Handled = true;
+                        break;
+
+                    case Key.I: // Ctrl+I
+                        GetActiveEditor()?.ToggleItalic();
+                        e.Handled = true;
+                        break;
+
+                    case Key.K: // Ctrl+K
+                        GetActiveEditor()?.InsertLink();
+                        e.Handled = true;
+                        break;
+
+                    // Export
                     case Key.P: // Ctrl+P
                         PrintButton_Click(sender, e);
                         e.Handled = true;

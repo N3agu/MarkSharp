@@ -163,7 +163,7 @@ namespace MarkSharp {
 
         private async void MarkdownTextBox_ScrollChanged(object sender, ScrollChangedEventArgs e) {
             if (!IsScrollSyncEnabled) return;
-            if (_isTextBoxScrolling) return;
+            if (_isTextBoxScrolling || _isPreviewScrolling) return;
 
             _isTextBoxScrolling = true;
 
@@ -240,6 +240,93 @@ namespace MarkSharp {
 
             PreviewBrowser.NavigateToString(finalHtml);
         }
+
+        public void WrapSelection(string prefix, string suffix)
+        {
+            int selectionStart = MarkdownTextBox.SelectionStart;
+            int selectionLength = MarkdownTextBox.SelectionLength;
+            string selectedText = MarkdownTextBox.SelectedText;
+
+            string newText = prefix + selectedText + suffix;
+
+            MarkdownTextBox.Text = MarkdownTextBox.Text.Remove(selectionStart, selectionLength).Insert(selectionStart, newText);
+
+            if (selectionLength > 0)
+            {
+                MarkdownTextBox.Select(selectionStart, newText.Length);
+            }
+            else
+            {
+                MarkdownTextBox.CaretIndex = selectionStart + prefix.Length;
+            }
+            MarkdownTextBox.Focus();
+        }
+
+        public void InsertLink()
+        {
+            int selectionStart = MarkdownTextBox.SelectionStart;
+            int selectionLength = MarkdownTextBox.SelectionLength;
+            string selectedText = MarkdownTextBox.SelectedText;
+
+            string prefix = "[";
+            string suffix = "](url)";
+
+            if (selectionLength == 0)
+            {
+                selectedText = "link text";
+            }
+
+            string newText = prefix + selectedText + suffix;
+
+            MarkdownTextBox.Text = MarkdownTextBox.Text.Remove(selectionStart, selectionLength).Insert(selectionStart, newText);
+
+            int urlStart = selectionStart + prefix.Length + selectedText.Length + 2;
+            MarkdownTextBox.Select(urlStart, "url".Length);
+            MarkdownTextBox.Focus();
+        }
+
+        public void ToggleBlockquote()
+        {
+            int caretIndex = MarkdownTextBox.CaretIndex;
+            int lineIndex = MarkdownTextBox.GetLineIndexFromCharacterIndex(caretIndex);
+            if (lineIndex < 0) return;
+
+            string currentLine = MarkdownTextBox.GetLineText(lineIndex);
+            int lineStart = MarkdownTextBox.GetCharacterIndexFromLineIndex(lineIndex);
+
+            string lineEnding = "";
+            if (currentLine.EndsWith("\r\n"))
+            {
+                lineEnding = "\r\n";
+                currentLine = currentLine.Substring(0, currentLine.Length - 2);
+            }
+            else if (currentLine.EndsWith("\n"))
+            {
+                lineEnding = "\n";
+                currentLine = currentLine.Substring(0, currentLine.Length - 1);
+            }
+
+            int lineLength = currentLine.Length + lineEnding.Length;
+
+            if (currentLine.Trim().StartsWith(">"))
+            {
+                string unquotedLine = currentLine.Replace(">", "").TrimStart();
+                MarkdownTextBox.Text = MarkdownTextBox.Text.Remove(lineStart, lineLength).Insert(lineStart, unquotedLine + lineEnding);
+                MarkdownTextBox.CaretIndex = Math.Max(lineStart, caretIndex - 2);
+            }
+            else
+            {
+                string quotedLine = $"> {currentLine}";
+                MarkdownTextBox.Text = MarkdownTextBox.Text.Remove(lineStart, lineLength).Insert(lineStart, quotedLine + lineEnding);
+                MarkdownTextBox.CaretIndex = caretIndex + 2;
+            }
+            MarkdownTextBox.Focus();
+        }
+
+        public void ToggleBold() => WrapSelection("**", "**");
+        public void ToggleItalic() => WrapSelection("*", "*");
+        public void ToggleStrikethrough() => WrapSelection("~~", "~~");
+        public void ToggleCode() => WrapSelection("`", "`");
 
         private void UpdateWordCount() {
             int wordCount = GetWordCount();
