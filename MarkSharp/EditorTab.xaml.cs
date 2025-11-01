@@ -115,6 +115,38 @@ namespace MarkSharp {
             UpdatePreview();
         }
 
+        public async Task ExportToPdfAsync(string filePath)
+        {
+            if (PreviewBrowser == null || PreviewBrowser.CoreWebView2 == null)
+            {
+                throw new InvalidOperationException("WebView is not initialized.");
+            }
+
+            await PreviewBrowser.CoreWebView2.PrintToPdfAsync(filePath, null);
+        }
+
+        public string GetSelfContainedHtml()
+        {
+            string htmlFragment = Markdig.Markdown.ToHtml(MarkdownTextBox.Text, _markdownPipeline);
+
+            string fullHtml = $@"
+                <!DOCTYPE html>
+                <html lang=""en"">
+                <head>
+                    <meta charset=""utf-8"">
+                    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+                    <title>{FileName}</title>
+                </head>
+                <body>
+                    <div id=""wrapper"">
+                        {htmlFragment}
+                    </div>
+                </body>
+                </html>";
+
+            return fullHtml;
+        }
+
         public int GetWordCount() {
             string text = MarkdownTextBox.Text;
             char[] delimiters = new char[] { ' ', '\r', '\n' };

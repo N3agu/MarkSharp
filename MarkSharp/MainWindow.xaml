@@ -4,10 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MarkSharp"
-        mc:Ignorable="d"
-        Title="Mark#" Height="720" Width="1280"
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        mc:Ignorable="d"
+        Title="Mark#" Height="720" Width="1280"
         ui:WindowHelper.UseModernWindowStyle="True"
         KeyDown="MainWindow_KeyDown"
         Closing="MainWindow_Closing"
@@ -50,6 +50,21 @@
                                      Click="SaveAsButton_Click" />
                 </StackPanel>
             </ui:CommandBar.Content>
+
+            <ui:CommandBar.PrimaryCommands>
+                <ui:AppBarButton x:Name="ExportHtmlButton"
+                                 Icon="Share"
+                                 Label="Export"
+                                 ToolTip="Export as HTML (Ctrl+Shift+E)"
+                                 Click="ExportHtmlButton_Click"/>
+
+                <ui:AppBarButton x:Name="PrintButton"
+                                 Icon="Print"
+                                 Label="Print"
+                                 ToolTip="Print to PDF (Ctrl+P)"
+                                 Click="PrintButton_Click"/>
+            </ui:CommandBar.PrimaryCommands>
+
         </ui:CommandBar>
 
         <StatusBar DockPanel.Dock="Bottom">

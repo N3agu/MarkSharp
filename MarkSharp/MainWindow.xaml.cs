@@ -143,6 +143,59 @@ namespace MarkSharp {
             UpdateWindowTitle();
         }
 
+        private async void PrintButton_Click(object sender, RoutedEventArgs e)
+        {
+            var activeEditor = GetActiveEditor();
+            if (activeEditor == null) return;
+
+            SaveFileDialog saveDialog = new SaveFileDialog
+            {
+                Filter = "PDF Document (*.pdf)|*.pdf",
+                Title = "Print to PDF", // Changed title
+                FileName = Path.ChangeExtension(activeEditor.FileName, ".pdf")
+            };
+
+            if (saveDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    await activeEditor.ExportToPdfAsync(saveDialog.FileName);
+                    MessageBox.Show($"Successfully printed to {saveDialog.FileName}", "Print Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not print to PDF: {ex.Message}", "Print Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void ExportHtmlButton_Click(object sender, RoutedEventArgs e)
+        {
+            var activeEditor = GetActiveEditor();
+            if (activeEditor == null) return;
+
+            SaveFileDialog saveDialog = new SaveFileDialog
+            {
+                Filter = "HTML Document (*.html;*.htm)|*.html;*.htm",
+                Title = "Export as HTML",
+                FileName = Path.ChangeExtension(activeEditor.FileName, ".html")
+            };
+
+            if (saveDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    string fullHtml = activeEditor.GetSelfContainedHtml();
+                    File.WriteAllText(saveDialog.FileName, fullHtml);
+                    MessageBox.Show($"Successfully exported to {saveDialog.FileName}", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not export to HTML: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         private void ThemeToggleButton_Click(object sender, RoutedEventArgs e) {
             _isDarkTheme = !_isDarkTheme;
             var newTheme = _isDarkTheme ? ApplicationTheme.Dark : ApplicationTheme.Light;
@@ -197,6 +250,17 @@ namespace MarkSharp {
                         var activeTab = GetActiveTabItem();
                         if (activeTab != null) {
                             CloseTab(activeTab);
+                            e.Handled = true;
+                        }
+                        break;
+                    case Key.P: // Ctrl+P
+                        PrintButton_Click(sender, e);
+                        e.Handled = true;
+                        break;
+                    case Key.E:
+                        if (isShiftPressed) // Ctrl+Shift+E
+                        {
+                            ExportHtmlButton_Click(sender, e);
                             e.Handled = true;
                         }
                         break;
