@@ -9,7 +9,7 @@
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         ui:WindowHelper.UseModernWindowStyle="True"
-        KeyDown="MainWindow_KeyDown">
+        KeyDown="MainWindow_KeyDown" Icon="/logo-100.png">
     <DockPanel>
         <ui:CommandBar DockPanel.Dock="Top">
             <ui:CommandBar.Content>
