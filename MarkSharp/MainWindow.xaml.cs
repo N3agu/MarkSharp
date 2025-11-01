@@ -1,75 +1,172 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
-using Markdig;
 using ModernWpf;
-using System.Text.Json;
-using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
 using System.IO;
 using System.Windows.Input;
+using System.Windows.Controls;
+using System.ComponentModel;
 
 namespace MarkSharp {
     public partial class MainWindow : Window {
-        private readonly MarkdownPipeline _markdownPipeline;
-
         private bool _isDarkTheme = false;
-        private bool _isDirty = false;
-        private bool _isScrollSyncEnabled = true;
-        private bool _isTextBoxScrolling = false;
-        private bool _isPreviewScrolling = false;
-
-        private string _currentFilePath = null;
 
         public MainWindow() {
             InitializeComponent();
-
-            _markdownPipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
             ThemeManager.Current.ApplicationTheme = ApplicationTheme.Light;
-            InitializeWebViewAsync();
+            AddNewTab();
             UpdateWindowTitle();
-            UpdateWordCount();
         }
 
-        private async void InitializeWebViewAsync() {
-            await PreviewBrowser.EnsureCoreWebView2Async(null);
-
-            PreviewBrowser.CoreWebView2.WebMessageReceived += HandlePreviewScrollMessage;
-
-            await PreviewBrowser.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
-                window.addEventListener('scroll', () => {
-                    let scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
-                    let scrollPercent = 0; // Default to 0
-                    
-                    if (scrollableHeight > 0) {
-                        scrollPercent = window.scrollY / scrollableHeight;
-                    }
-                    
-                    window.chrome.webview.postMessage({ type: 'scroll', percent: scrollPercent });
-                });
-            ");
-
-            UpdatePreview();
+        private TabItem GetActiveTabItem() {
+            return EditorTabControl.SelectedItem as TabItem;
         }
 
-        private void SyncScrollCheckBox_Click(object sender, RoutedEventArgs e) {
-            _isScrollSyncEnabled = SyncScrollCheckBox.IsChecked ?? true;
+        private EditorTab GetActiveEditor() {
+            var activeTab = GetActiveTabItem();
+            return activeTab?.Content as EditorTab;
         }
 
-        private void MarkdownTextBox_TextChanged(object sender, TextChangedEventArgs e) {
-            _isDirty = true;
+        private void AddNewTab() {
+            var newEditor = new EditorTab();
+            newEditor.SetTheme(_isDarkTheme);
+
+            newEditor.DirtyStateChanged += OnEditorDirtyStateChanged;
+            newEditor.WordCountChanged += OnEditorWordCountChanged;
+
+            var newTabItem = new TabItem
+            {
+                Content = newEditor
+            };
+
+            var tabHeader = new TabHeader(newEditor.FileName);
+            newTabItem.Header = tabHeader;
+
+            EditorTabControl.Items.Add(newTabItem);
+            EditorTabControl.SelectedItem = newTabItem;
+
+            UpdateStatusBar(newEditor);
+        }
+
+        private async void OpenFileInNewTab(string filePath) {
+            var newEditor = new EditorTab();
+            newEditor.SetTheme(_isDarkTheme);
+
+            newEditor.DirtyStateChanged += OnEditorDirtyStateChanged;
+            newEditor.WordCountChanged += OnEditorWordCountChanged;
+
+            var newTabItem = new TabItem {
+                Content = newEditor
+            };
+
+            var tabHeader = new TabHeader(Path.GetFileName(filePath));
+            newTabItem.Header = tabHeader;
+
+            EditorTabControl.Items.Add(newTabItem);
+            EditorTabControl.SelectedItem = newTabItem;
+
+            await newEditor.LoadFile(filePath);
+
+            UpdateStatusBar(newEditor);
             UpdateWindowTitle();
-            UpdatePreview();
-            UpdateWordCount();
+        }
+
+        private void CloseTabButton_Click(object sender, RoutedEventArgs e) {
+            var button = sender as Button;
+            var headerContext = button?.Tag as TabHeader;
+
+            TabItem tabToClose = null;
+            foreach (TabItem item in EditorTabControl.Items) {
+                if (item.DataContext == headerContext) {
+                    tabToClose = item;
+                    break;
+                }
+            }
+
+            if (tabToClose != null) {
+                CloseTab(tabToClose);
+            }
+        }
+
+        private void CloseTab(TabItem tabItem) {
+            var editor = tabItem.Content as EditorTab;
+            if (editor == null) return;
+
+            if (editor.IsDirty) {
+                var result = MessageBox.Show(
+                    $"Do you want to save changes to {editor.FileName}?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Cancel) {
+                    return;
+                }
+                
+                if (result == MessageBoxResult.Yes) {
+                    editor.Save();
+                }
+            }
+
+            editor.DirtyStateChanged -= OnEditorDirtyStateChanged;
+            editor.WordCountChanged -= OnEditorWordCountChanged;
+
+            EditorTabControl.Items.Remove(tabItem);
+        }
+
+        private void NewFileButton_Click(object sender, RoutedEventArgs e) {
+            AddNewTab();
+        }
+
+        private void OpenFileButton_Click(object sender, RoutedEventArgs e) {
+            OpenFileDialog openDialog = new OpenFileDialog {
+                Filter = "Markdown Files (*.md;*.mdown;*.markdown)|*.md;*.mdown;*.markdown|All Files (*.*)|*.*",
+                Title = "Open Markdown File",
+                Multiselect = true // open multiple files
+            };
+
+            if (openDialog.ShowDialog() == true) {
+                foreach (string file in openDialog.FileNames) {
+                    OpenFileInNewTab(file);
+                }
+            }
+        }
+
+        private void SaveButton_Click(object sender, RoutedEventArgs e) {
+            var activeEditor = GetActiveEditor();
+            activeEditor?.Save();
+            UpdateWindowTitle();
+        }
+
+        private void SaveAsButton_Click(object sender, RoutedEventArgs e) {
+            var activeEditor = GetActiveEditor();
+            activeEditor?.SaveAs();
+            UpdateWindowTitle();
         }
 
         private void ThemeToggleButton_Click(object sender, RoutedEventArgs e) {
             _isDarkTheme = !_isDarkTheme;
             var newTheme = _isDarkTheme ? ApplicationTheme.Dark : ApplicationTheme.Light;
             ThemeManager.Current.ApplicationTheme = newTheme;
-
             ThemeToggleIcon.Glyph = _isDarkTheme ? "\uEC8A" : "\uE708";
 
-            UpdatePreview();
+            foreach (TabItem tab in EditorTabControl.Items) {
+                (tab.Content as EditorTab)?.SetTheme(_isDarkTheme);
+            }
+        }
+
+        private void SyncScrollCheckBox_Click(object sender, RoutedEventArgs e) {
+            var activeEditor = GetActiveEditor();
+            if (activeEditor != null) {
+                activeEditor.IsScrollSyncEnabled = SyncScrollCheckBox.IsChecked ?? true;
+            }
+        }
+
+        private void EditorTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e) {
+            if (e.AddedItems.Count > 0) {
+                var activeEditor = GetActiveEditor();
+                UpdateStatusBar(activeEditor);
+                UpdateWindowTitle();
+            }
         }
 
         private void MainWindow_KeyDown(object sender, KeyEventArgs e) {
@@ -78,225 +175,103 @@ namespace MarkSharp {
 
             if (isCtrlPressed) {
                 switch (e.Key) {
-                    case Key.O: // Ctrl + O
+                    case Key.N: // Ctrl+N
+                        NewFileButton_Click(sender, e);
+                        e.Handled = true;
+                        break;
+
+                    case Key.O: // Ctrl+O
                         OpenFileButton_Click(sender, e);
                         e.Handled = true;
                         break;
 
                     case Key.S:
-                        if (isShiftPressed) {
-                            // Ctrl + Shift + S
+                        if (isShiftPressed) // Ctrl+Shift+S
                             SaveAsButton_Click(sender, e);
-                        } else {
-                            // Ctrl + S
+                        else // Ctrl+S
                             SaveButton_Click(sender, e);
-                        }
                         e.Handled = true;
+                        break;
+
+                    case Key.W: // Ctrl+W
+                        var activeTab = GetActiveTabItem();
+                        if (activeTab != null) {
+                            CloseTab(activeTab);
+                            e.Handled = true;
+                        }
                         break;
                 }
             }
         }
 
-        private void OpenFileButton_Click(object sender, RoutedEventArgs e) {
-            OpenFileDialog openDialog = new OpenFileDialog
-            {
-                Filter = "Markdown Files (*.md;*.mdown;*.markdown)|*.md;*.mdown;*.markdown|All Files (*.*)|*.*",
-                Title = "Open Markdown File"
-            };
+        private void MainWindow_Closing(object sender, CancelEventArgs e) {
+            var tabsToClose = new List<TabItem>(EditorTabControl.Items.Cast<TabItem>());
 
-            if (openDialog.ShowDialog() == true) {
-                try {
-                    _currentFilePath = openDialog.FileName;
-                    string content = File.ReadAllText(_currentFilePath);
-                    MarkdownTextBox.Text = content;
+            foreach (var tab in tabsToClose) {
+                CloseTab(tab);
+            }
 
-                    _isDirty = false;
-                    UpdateWindowTitle();
-                    UpdatePreview();
-                    UpdateWordCount();
-                } catch (Exception ex) {
-                    MessageBox.Show($"Error opening file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+            if (EditorTabControl.Items.Count > 0) {
+                e.Cancel = true;
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e) {
-            if (string.IsNullOrEmpty(_currentFilePath)) {
-                SaveFileAs();
-            } else {
-                try {
-                    File.WriteAllText(_currentFilePath, MarkdownTextBox.Text);
-                    _isDirty = false;
-                    UpdateWindowTitle();
-                } catch (Exception ex) {
-                    MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-        }
-
-        private void SaveAsButton_Click(object sender, RoutedEventArgs e)
-        {
-            SaveFileAs();
-        }
-
-        private async void MarkdownTextBox_ScrollChanged(object sender, ScrollChangedEventArgs e) {
-            if (!_isScrollSyncEnabled) return;
-
-            if (_isPreviewScrolling) return;
-
-            _isTextBoxScrolling = true;
-
-            if (e.VerticalChange != 0 && MarkdownTextBox.ExtentHeight > MarkdownTextBox.ViewportHeight) {
-                double scrollPercent = e.VerticalOffset / (MarkdownTextBox.ExtentHeight - MarkdownTextBox.ViewportHeight);
-
-                if (PreviewBrowser != null && PreviewBrowser.CoreWebView2 != null) {
-                    string script = $"window.scrollTo(0, (document.documentElement.scrollHeight - window.innerHeight) * {scrollPercent});";
-                    await PreviewBrowser.CoreWebView2.ExecuteScriptAsync(script);
-                }
-            }
-
-            _isTextBoxScrolling = false;
-        }
-
-        private void HandlePreviewScrollMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e) {
-            if (!_isScrollSyncEnabled) return;
-
-            if (_isTextBoxScrolling) return;
-
-            _isPreviewScrolling = true;
-
-            try {
-                JsonDocument doc = JsonDocument.Parse(e.WebMessageAsJson);
-                JsonElement root = doc.RootElement;
-
-                if (root.TryGetProperty("type", out JsonElement type) && type.GetString() == "scroll") {
-                    if (root.TryGetProperty("percent", out JsonElement percentElement)) {
-                        double scrollPercent = percentElement.GetDouble();
-
-                        double newOffset = scrollPercent * (MarkdownTextBox.ExtentHeight - MarkdownTextBox.ViewportHeight);
-
-                        if (!double.IsNaN(newOffset) && !double.IsInfinity(newOffset))
-                        {
-                            MarkdownTextBox.ScrollToVerticalOffset(newOffset);
-                        }
+        private void OnEditorDirtyStateChanged(EditorTab editor) {
+            foreach (TabItem tab in EditorTabControl.Items) {
+                if (tab.Content == editor) {
+                    var header = tab.Header as TabHeader;
+                    if (header != null) {
+                        string dirtyMark = editor.IsDirty ? "*" : "";
+                        header.HeaderText = $"{editor.FileName}{dirtyMark}";
                     }
+                    break;
                 }
-            } catch (JsonException)
-            {
-
-            } finally {
-                _isPreviewScrolling = false;
             }
+            UpdateWindowTitle();
         }
 
-        private void UpdatePreview() {
-            if (PreviewBrowser == null || PreviewBrowser.CoreWebView2 == null) {
-                return;
-            }
-
-            string markdown = MarkdownTextBox.Text;
-            string html = Markdown.ToHtml(markdown, _markdownPipeline);
-
-            string themeCss = _isDarkTheme
-                ? "body { background-color: #000000; color: #f0f0f0; font-family: 'Segoe UI', sans-serif; }"
-                : "body { background-color: #ffffff; color: #0f0f0f; font-family: 'Segoe UI', sans-serif; }";
-
-            string finalHtml = $@"
-                <html>
-                    <head>
-                        <style>
-                            html, body {{
-                                margin: 0;
-                                padding: 0;
-                            }}
-                            {themeCss}
-                            .content-wrapper {{
-                                padding: 20px;
-                            }}
-                            code {{
-                                background-color: #80808030;
-                                padding: 2px 5px;
-                                border-radius: 4px;
-                                font-family: Consolas, monospace;
-                            }}
-                            pre {{
-                                background-color: #80808030;
-                                padding: 10px;
-                                border-radius: 4px;
-                                overflow-x: auto;
-                            }}
-                            pre > code {{
-                                background-color: transparent;
-                                padding: 0;
-                            }}
-                            blockquote {{
-                                border-left: 4px solid #80808080;
-                                padding-left: 10px;
-                                margin-left: 0;
-                                color: #808080;
-                            }}
-                            table {{
-                                border-collapse: collapse;
-                                width: auto;
-                            }}
-                            th, td {{
-                                border: 1px solid #80808080;
-                                padding: 8px;
-                            }}
-                            th {{
-                                background-color: #80808030;
-                            }}
-                        </style>
-                    </head>
-                    <body>
-                        <div class='content-wrapper'>
-                            {html}
-                        </div>
-                    </body>
-                </html>";
-
-            PreviewBrowser.NavigateToString(finalHtml);
-        }
-
-        private void SaveFileAs() {
-            SaveFileDialog saveDialog = new SaveFileDialog {
-                Filter = "Markdown File (*.md)|*.md|All Files (*.*)|*.*",
-                Title = "Save Markdown File"
-            };
-
-            if (saveDialog.ShowDialog() == true) {
-                try {
-                    _currentFilePath = saveDialog.FileName;
-                    File.WriteAllText(_currentFilePath, MarkdownTextBox.Text);
-                    _isDirty = false;
-                    UpdateWindowTitle();
-                } catch (Exception ex) {
-                    MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+        private void OnEditorWordCountChanged(EditorTab sender, int wordCount) {
+            if (GetActiveEditor() == sender) {
+                WordCountLabel.Text = $"{wordCount} words";
             }
         }
 
         private void UpdateWindowTitle() {
-            string fileName = "Untitled";
-            if (!string.IsNullOrEmpty(_currentFilePath)) {
-                fileName = Path.GetFileName(_currentFilePath);
+            var activeEditor = GetActiveEditor();
+            if (activeEditor != null) {
+                string dirtyMark = activeEditor.IsDirty ? "*" : "";
+                Title = $"{dirtyMark}{activeEditor.FileName} - Mark#";
+            } else {
+                Title = "Mark#";
             }
-
-            string dirtyMark = _isDirty ? "*" : "";
-
-            Title = $"{dirtyMark}{fileName} - Mark#";
         }
-
-        private void UpdateWordCount() {
-            string text = MarkdownTextBox.Text;
-
-            char[] delimiters = new char[] { ' ', '\r', '\n' };
-            string[] words = text.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
-
-            int wordCount = words.Length;
-
-            WordCountLabel.Text = $"{wordCount} words";
+        private void UpdateStatusBar(EditorTab activeEditor) {
+            if (activeEditor != null) {
+                WordCountLabel.Text = $"{activeEditor.GetWordCount()} words";
+                SyncScrollCheckBox.IsChecked = activeEditor.IsScrollSyncEnabled;
+            } else {
+                WordCountLabel.Text = "0 words";
+                SyncScrollCheckBox.IsChecked = false;
+            }
         }
     }
+
+    public class TabHeader : INotifyPropertyChanged {
+        private string _headerText;
+        public string HeaderText {
+            get => _headerText;
+            set {
+                _headerText = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HeaderText)));
+            }
+        }
+
+        public TabHeader(string headerText) {
+            HeaderText = headerText;
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+    }
 }
+
 

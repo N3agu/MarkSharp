@@ -9,29 +9,45 @@
         xmlns:ui="http://schemas.modernwpf.com/2019"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         ui:WindowHelper.UseModernWindowStyle="True"
-        KeyDown="MainWindow_KeyDown" Icon="/logo-100.png">
+        KeyDown="MainWindow_KeyDown"
+        Closing="MainWindow_Closing"
+        Icon="/logo-100.png">
     <DockPanel>
         <ui:CommandBar DockPanel.Dock="Top">
             <ui:CommandBar.Content>
                 <StackPanel Orientation="Horizontal">
+
+                    <ui:AppBarButton x:Name="NewFileButton"
+                                     Cursor="Hand"
+                                     Icon="Add"
+                                     Label="New"
+                                     HorizontalAlignment="Left"
+                                     ToolTip="New (Ctrl+N)"
+                                     Click="NewFileButton_Click" />
+
                     <ui:AppBarButton x:Name="OpenFileButton"
                                      Icon="OpenFile"
+                                     Cursor="Hand"
                                      Label="Open"
+                                     HorizontalAlignment="Left"
                                      ToolTip="Open (Ctrl+O)"
                                      Click="OpenFileButton_Click" />
 
                     <ui:AppBarButton x:Name="SaveButton"
                                      Icon="Save"
+                                     Cursor="Hand"
                                      Label="Save"
+                                     HorizontalAlignment="Left"
                                      ToolTip="Save (Ctrl+S)"
                                      Click="SaveButton_Click" />
 
                     <ui:AppBarButton x:Name="SaveAsButton"
-                                     Label="Save As"
                                      Icon="Edit"
+                                     Cursor="Hand"
+                                     HorizontalAlignment="Left"
+                                     Label="Save As"
                                      ToolTip="Save As (Ctrl+Shift+S)"
-                                     Click="SaveAsButton_Click" >
-                    </ui:AppBarButton>
+                                     Click="SaveAsButton_Click" />
                 </StackPanel>
             </ui:CommandBar.Content>
         </ui:CommandBar>
@@ -51,6 +67,7 @@
             <StatusBarItem Grid.Column="0">
                 <ui:AppBarButton x:Name="ThemeToggleButton"
                                  Label="Toggle Theme"
+                                 Cursor="Hand"
                                  Height="35" Width="40"
                                  ToolTip="Toggle Theme"
                                  Click="ThemeToggleButton_Click" >
@@ -64,6 +81,7 @@
                 <StackPanel Orientation="Horizontal">
                     <CheckBox x:Name="SyncScrollCheckBox"
                               Content="Sync Scroll"
+                              Cursor="Hand"
                               IsChecked="True"
                               VerticalAlignment="Center"
                               Margin="0,0,10,0"
@@ -79,57 +97,26 @@
 
         </StatusBar>
 
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="300" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" MinWidth="300" />
-            </Grid.ColumnDefinitions>
+        <TabControl x:Name="EditorTabControl"
+            SelectionChanged="EditorTabControl_SelectionChanged" Cursor="Arrow">
 
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+            <TabControl.ItemContainerStyle>
+                <Style TargetType="TabItem" BasedOn="{StaticResource DefaultTabItemStyle}">
+                    <Setter Property="MinWidth" Value="120"/>
+                    <Setter Property="MinHeight" Value="17"/>
+                    <Setter Property="HeaderTemplate">
+                        <Setter.Value>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding HeaderText}"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.ItemContainerStyle>
+        </TabControl>
 
-            <TextBlock Text="MARKDOWN"
-                       Grid.Row="0" Grid.Column="0"
-                       Padding="15,10,10,10"
-                       FontSize="12"
-                       FontWeight="SemiBold"
-                       Opacity="0.7" />
-
-            <TextBlock Text="PREVIEW"
-                       Grid.Row="0" Grid.Column="2"
-                       Padding="10,10,10,10"
-                       FontSize="12"
-                       FontWeight="SemiBold"
-                       Opacity="0.7" />
-
-            <TextBox x:Name="MarkdownTextBox"
-                     Grid.Column="0" Grid.Row="1"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     BorderThickness="0"
-                     Padding="15,0,15,15"
-                     FontFamily="Consolas"
-                     FontSize="14"
-                     Text="" 
-                     TextChanged="MarkdownTextBox_TextChanged"
-                     ScrollViewer.ScrollChanged="MarkdownTextBox_ScrollChanged"/>
-
-            <GridSplitter Grid.Column="1"
-                          Grid.Row="0" Grid.RowSpan="2"
-                          Width="5"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Stretch"
-                          Background="LightGray"
-                          ShowsPreview="True" />
-
-            <wv2:WebView2 x:Name="PreviewBrowser"
-                          Grid.Column="2" Grid.Row="1"
-                          WebMessageReceived="HandlePreviewScrollMessage" />
-        </Grid>
     </DockPanel>
 </Window>
 
